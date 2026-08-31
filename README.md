@@ -2,9 +2,11 @@
 
 RecoverAI is an AI-powered revenue recovery platform for the Razorpay AI Buildathon (Track 03).
 
-## Phase 1: Foundation
-- Monorepo initialized (Next.js, FastAPI, Celery, Postgres, Redis).
-- Docker Compose cluster configured.
+## Phases
+- **Phase 1**: Database schema, models, and core repository setup.
+- **Phase 2**: Core backend service with FastAPI, PostgreSQL, and basic models.
+- **Phase 3**: Razorpay Webhook Integration (Payment Failure & Success flows).
+- **Phase 4**: Recovery Intelligence & ML Evaluation pipeline (Probability scoring, evaluation).
 
 ## Phase 2: Database & Data Foundation
 - **Database Schema**: Fully implemented via 14 SQLAlchemy models mapping `03_Database_Schema.sql`. Constraints ensure no floating-point money values and enforce rigid enum boundaries on ML actions.

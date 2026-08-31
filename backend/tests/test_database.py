@@ -29,7 +29,11 @@ def test_merchant_creation(db):
 
 def test_customer_creation(db):
     try:
-        merchant = db.query(Merchant).first()
+        merchant = Merchant(name="Test Merchant", currency="INR")
+        db.add(merchant)
+        db.commit()
+        db.refresh(merchant)
+        
         customer = Customer(merchant_id=merchant.id, name="Test Customer", total_spend=50000)
         db.add(customer)
         db.commit()
@@ -44,8 +48,15 @@ def test_customer_creation(db):
 
 def test_payment_and_case(db):
     try:
-        merchant = db.query(Merchant).first()
-        customer = db.query(Customer).first()
+        merchant = Merchant(name="Test Merchant", currency="INR")
+        db.add(merchant)
+        db.commit()
+        db.refresh(merchant)
+        
+        customer = Customer(merchant_id=merchant.id, name="Test Customer", total_spend=50000)
+        db.add(customer)
+        db.commit()
+        db.refresh(customer)
         
         # Test money storage
         payment = Payment(

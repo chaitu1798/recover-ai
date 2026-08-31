@@ -1,0 +1,35 @@
+{
+    "classification": {
+        "precision": 0.9251,
+        "recall": 0.9073,
+        "f1": 0.9161,
+        "accuracy": 0.896,
+        "roc_auc": 0.9642,
+        "pr_auc": 0.9804,
+        "brier_score": 0.0753,
+        "fpr": 0.123
+    },
+    "confusion_matrix": {
+        "tp": 284,
+        "tn": 164,
+        "fp": 23,
+        "fn": 29
+    },
+    "business": {
+        "revenue_at_risk": 1251532000,
+        "recoverable_revenue_gt": 0,
+        "predicted_recoverable_revenue": 756376800,
+        "revenue_captured": 701576000,
+        "false_positive_cost": 115000,
+        "action_efficiency": 0.9251
+    },
+    "baseline": {
+        "precision": 0.626,
+        "recall": 1.0,
+        "f1": 0.77,
+        "fpr": 1.0,
+        "revenue_captured": 775168200,
+        "false_positive_cost": 935000
+    },
+    "threshold": 0.5
+}

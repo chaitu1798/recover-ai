@@ -1,0 +1,22 @@
+{
+    "model_name": "logistic_regression",
+    "model_version": "1.0.0",
+    "training_seed": 42,
+    "features": [
+        "amount",
+        "currency",
+        "payment_method",
+        "failure_reason",
+        "attempt_number",
+        "previous_successes",
+        "previous_failures",
+        "customer_tenure_days",
+        "time_since_failure_minutes",
+        "historical_recovery_rate"
+    ],
+    "target": "recoverable_ground_truth",
+    "train_records": 1200,
+    "validation_records": 300,
+    "test_records": 500,
+    "threshold": 0.5
+}
