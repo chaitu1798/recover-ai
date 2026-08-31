@@ -16,17 +16,6 @@ from app.config import settings
 engine = create_engine(settings.DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-@pytest.fixture(scope="module")
-def db():
-    try:
-        Base.metadata.create_all(bind=engine)
-        session = TestingSessionLocal()
-        yield session
-        session.close()
-        Base.metadata.drop_all(bind=engine)
-    except Exception as e:
-        pytest.skip(f"DATABASE TESTS BLOCKED — PostgreSQL unavailable: {e}")
-
 def test_merchant_creation(db):
     try:
         merchant = Merchant(name="Test Merchant", currency="INR")
