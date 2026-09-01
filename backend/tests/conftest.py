@@ -27,3 +27,28 @@ def db(setup_database):
     session.close()
     transaction.rollback()
     connection.close()
+
+@pytest.fixture
+def sample_payment(db):
+    from app.models.merchant import Merchant
+    from app.models.payment import Payment
+    import uuid
+    merchant = Merchant(name="Test Merchant")
+    db.add(merchant)
+    db.commit()
+    db.refresh(merchant)
+    
+    payment = Payment(
+        merchant_id=merchant.id,
+        amount=1000,
+        currency="INR",
+        method="card",
+        status="failed",
+        error_code="BAD_REQUEST",
+        error_description="Test error",
+        razorpay_payment_id=f"pay_{uuid.uuid4().hex[:14]}"
+    )
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+    return payment

@@ -38,7 +38,8 @@ def setup_test_data(db):
     
     case = RecoveryCase(
         payment_id=payment.id,
-        status="open",
+        status="approved",
+        approval_status="APPROVED",
         amount_at_risk=payment.amount,
         eligible=True
     )

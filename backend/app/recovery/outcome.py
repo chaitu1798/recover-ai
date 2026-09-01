@@ -3,6 +3,7 @@ from app.models.recovery_case import RecoveryCase
 from app.models.payment import Payment
 from app.models.action_result import ActionResult
 from app.models.recovery_action import RecoveryActionModel
+from app.recovery.state_machine import transition_to_recovered, transition_to_failed, transition_to_open
 
 def process_outcome(
     db: Session,
@@ -37,21 +38,21 @@ def process_outcome(
     # OPEN -> EXECUTING (done in executor before simulation) -> RECOVERED/FAILED/OPEN
     
     if success and action_model.action_type == "RETRY" and recovered_amount > 0:
-        recovery_case.status = "RECOVERED"
+        transition_to_recovered(db, recovery_case)
         payment.status = "captured"
     elif not success and action_model.action_type == "RETRY":
         # Check attempts
         # We don't mark FAILED immediately unless max attempts, but the requirements just say EXECUTING -> FAILED or something.
         # Let's say it goes back to OPEN or FAILED. We'll leave it OPEN if we want to retry later, or FAILED if we are done.
         # But for this simulation, we'll mark FAILED if RETRY fails.
-        recovery_case.status = "FAILED"
+        transition_to_failed(db, recovery_case)
     else:
         # PAYMENT_LINK, REMINDER, NO_ACTION: case remains OPEN or we can mark it whatever the logic desires.
         # "NO_ACTION" might close it. Let's just set it to FAILED if no action, or keep it OPEN.
         if action_model.action_type == "NO_ACTION":
-            recovery_case.status = "FAILED"
+            transition_to_failed(db, recovery_case)
         else:
             # Action succeeded but money not recovered immediately (e.g. PAYMENT_LINK)
-            recovery_case.status = "OPEN"
+            transition_to_open(db, recovery_case)
             
     return action_result

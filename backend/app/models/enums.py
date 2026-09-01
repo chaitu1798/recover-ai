@@ -14,6 +14,11 @@ class RecoveryCaseStatus(str, Enum):
     closed = 'closed'
     resolved = 'resolved'
 
+class ApprovalStatus(str, Enum):
+    PENDING_APPROVAL = 'PENDING_APPROVAL'
+    APPROVED = 'APPROVED'
+    REJECTED = 'REJECTED'
+
 class RecoveryAction(str, Enum):
     RETRY = 'RETRY'
     PAYMENT_LINK = 'PAYMENT_LINK'

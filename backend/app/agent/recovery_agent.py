@@ -14,6 +14,7 @@ from app.agent.providers.openai_provider import OpenAIProvider
 from app.agent.prompts import build_prompt
 from app.agent.decision import make_decision
 from app.agent.audit import create_audit_log
+from app.recovery.state_machine import transition_to_analyzed, transition_to_pending_approval
 from app.agent.schemas import AgentAnalyzeResponse
 from app.ml.features import build_preprocessor
 from app.ml.predict import predict_recovery
@@ -145,6 +146,12 @@ def analyze_recovery_case(db: Session, payment_id: UUID, recovery_case_id: UUID)
     )
     
     db.flush() # Ensure decision has an ID
+    
+    if final_decision["recommended_action"] != "NO_ACTION" and final_decision["policy_allowed"]:
+        transition_to_pending_approval(db, recovery_case, str(decision.id))
+    else:
+        transition_to_analyzed(db, recovery_case, str(decision.id))
+        
     db.commit()
     
     return AgentAnalyzeResponse(

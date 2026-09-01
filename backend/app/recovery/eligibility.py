@@ -26,8 +26,8 @@ def check_eligibility(
         reasons.append("RecoveryCase does not exist.")
     elif not recovery_case.eligible:
         reasons.append("RecoveryCase is marked as ineligible.")
-    elif recovery_case.status not in ["open", "EXECUTING"]:
-        reasons.append(f"RecoveryCase status is {recovery_case.status}, expected 'open' or 'EXECUTING'.")
+    elif recovery_case.status not in ["open", "approved", "executing", "EXECUTING"]:
+        reasons.append(f"RecoveryCase status is {recovery_case.status}, expected 'open', 'approved' or 'executing'.")
 
     if not decision:
         reasons.append("RecoveryDecision does not exist.")

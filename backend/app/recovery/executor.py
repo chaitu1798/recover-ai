@@ -12,6 +12,8 @@ from app.models.recovery_decision import RecoveryDecision
 from app.models.policy import Policy
 from app.models.recovery_action import RecoveryActionModel
 from app.models.audit_log import AuditLog
+from app.models.enums import ApprovalStatus
+from app.recovery.state_machine import transition_to_executing, transition_to_recovered, transition_to_failed
 
 logger = logging.getLogger(__name__)
 
@@ -60,10 +62,12 @@ def execute_recovery(db: Session, case_id: str, decision_id: str, idempotency_ke
         if not is_eligible:
             raise ValueError(f"Not eligible for execution: {', '.join(reasons)}")
             
-
+        # 8. Check human approval gate (Phase 7)
+        if recovery_case.approval_status != ApprovalStatus.APPROVED.value:
+            raise ValueError("Approval required before execution")
 
         # 9. Transition case to EXECUTING
-        recovery_case.status = "EXECUTING"
+        transition_to_executing(db, recovery_case)
         db.flush()
 
         # 10. Run deterministic simulator
@@ -94,25 +98,8 @@ def execute_recovery(db: Session, case_id: str, decision_id: str, idempotency_ke
 
         # 12, 13. Create ActionResult & Update RecoveryCase
         action_result = process_outcome(db, recovery_case, payment, action_model, sim_result)
+        
         db.flush()
-
-        # 14. Create AuditLog
-        audit_log = AuditLog(
-            merchant_id=payment.merchant_id,
-            entity_type="RecoveryCase",
-            entity_id=recovery_case.id,
-            actor_type="system",
-            action="execute_recovery",
-            before_state={"status": "open", "attempt_number": payment.attempt_number - (1 if decision.recommended_action == "RETRY" else 0)},
-            after_state={
-                "status": recovery_case.status, 
-                "attempt_number": payment.attempt_number,
-                "recovered_amount": action_result.recovered_amount
-            },
-            reason="Simulated execution",
-            correlation_id=idempotency_key
-        )
-        db.add(audit_log)
         
         # 15. Commit atomically
         db.commit()

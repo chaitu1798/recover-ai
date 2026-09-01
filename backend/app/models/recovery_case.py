@@ -19,6 +19,14 @@ class RecoveryCase(Base):
     opened_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     closed_at = Column(DateTime(timezone=True))
     
+    # Phase 7: Approval fields
+    approval_status = Column(String(50))
+    approved_by = Column(String(100))
+    approved_at = Column(DateTime(timezone=True))
+    rejected_by = Column(String(100))
+    rejected_at = Column(DateTime(timezone=True))
+    rejection_reason = Column(Text)
+    
     payment = relationship('Payment', back_populates='recovery_cases')
     decisions = relationship('RecoveryDecision', back_populates='recovery_case')
     actions = relationship('RecoveryActionModel', back_populates='recovery_case')

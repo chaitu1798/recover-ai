@@ -1,0 +1,13 @@
+# Operations Evaluation Report
+
+- **cases_processed**: 2501
+- **cases_requiring_approval**: 0
+- **approval_rate**: 0
+- **rejection_rate**: 0
+- **policy_compliance**: 1.0
+- **execution_success_rate**: 0
+- **recovered_revenue**: 0
+- **recovery_rate**: 0.0
+- **audit_completeness**: 100%
+- **idempotency_violations**: 0
+- **invalid_state_transitions**: 0

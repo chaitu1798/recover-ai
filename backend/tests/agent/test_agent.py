@@ -15,7 +15,7 @@ def test_agent_analyze_case(mock_get_recommendation, mock_predict_recovery):
     db_mock = MagicMock()
 
     payment = Payment(id=uuid.uuid4(), merchant_id=uuid.uuid4(), amount=1000, attempt_number=1, error_code="BANK_TIMEOUT", currency="INR", method="card")
-    recovery_case = RecoveryCase(id=uuid.uuid4(), payment_id=payment.id, eligible=True)
+    recovery_case = RecoveryCase(id=uuid.uuid4(), payment_id=payment.id, eligible=True, status="open")
     policy = Policy(merchant_id=payment.merchant_id, min_confidence=0.5, max_attempts=3, enabled=True)
 
     # Mock queries
@@ -45,14 +45,14 @@ def test_agent_analyze_case(mock_get_recommendation, mock_predict_recovery):
     assert response.recommended_action == "RETRY"
     assert response.policy_allowed is True
     assert response.decision_source == "LLM"
-    assert db_mock.add.call_count == 2 # One for decision, one for audit log
+    assert db_mock.add.call_count == 3 # decision, audit log from create_audit_log, audit log from transition
 
 @patch('app.agent.recovery_agent.predict_recovery')
 def test_agent_idempotency(mock_predict_recovery):
     db_mock = MagicMock()
 
     payment = Payment(id=uuid.uuid4(), merchant_id=uuid.uuid4(), amount=1000, attempt_number=1, error_code="BANK_TIMEOUT", currency="INR", method="card")
-    recovery_case = RecoveryCase(id=uuid.uuid4(), payment_id=payment.id, eligible=True)
+    recovery_case = RecoveryCase(id=uuid.uuid4(), payment_id=payment.id, eligible=True, status="open")
 
     existing_decision = RecoveryDecision(
         id=uuid.uuid4(),
