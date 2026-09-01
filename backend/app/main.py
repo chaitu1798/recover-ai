@@ -1,12 +1,22 @@
 from fastapi import FastAPI
-from app.api import health, webhooks, agent
+from fastapi.middleware.cors import CORSMiddleware
+from app.api import health, webhooks, agent, recovery
 
 app = FastAPI(title="RecoverAI", description="AI Revenue Recovery Platform")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(health.router)
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(agent.router, prefix="/api/v1")
+app.include_router(recovery.router, prefix="/api/v1")
 
 @app.get("/")
 def root():

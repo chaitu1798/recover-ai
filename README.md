@@ -9,6 +9,8 @@ RecoverAI is an AI-powered revenue recovery platform for the Razorpay AI Buildat
 - **Phase 4**: Recovery Intelligence & ML Evaluation pipeline (Probability scoring, evaluation).
 - **Phase 5**: AI Recovery Agent
   - **RECOMMENDATION ONLY**: No real financial operations are performed. The agent safely evaluates policies and bounded strategies without making Razorpay API calls.
+- **Phase 6**: Recovery Execution Simulator & Evaluation
+  - A test-only pipeline enforcing `RAZORPAY_MODE=test`. Simulates outcomes safely based on a seeded logic without hitting Razorpay APIs, providing full idempotency checking and a comprehensive evaluation script (`scripts/evaluate_recovery.py`).
 
 ## Phase 2: Database & Data Foundation
 - **Database Schema**: Fully implemented via 14 SQLAlchemy models mapping `03_Database_Schema.sql`. Constraints ensure no floating-point money values and enforce rigid enum boundaries on ML actions.

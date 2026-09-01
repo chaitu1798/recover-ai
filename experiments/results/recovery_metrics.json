@@ -1,0 +1,22 @@
+{
+  "Total records": 500,
+  "Eligible records": 500,
+  "Executed records": 500,
+  "Blocked records": 0,
+  "Successful recoveries": 0,
+  "Failed recoveries": 500,
+  "Revenue at risk": 1251532000,
+  "Revenue recovered": 0,
+  "Recovery rate": "0.00%",
+  "Policy compliance": "100%",
+  "Execution success rate": "0.00%",
+  "RETRY count": 0,
+  "PAYMENT_LINK count": 0,
+  "REMINDER count": 0,
+  "NO_ACTION count": 500,
+  "Idempotency protection": true,
+  "Duplicate execution attempts": 500,
+  "Duplicate RecoveryActions": 0,
+  "Duplicate ActionResults": 0,
+  "Average recovered amount": 0
+}

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.api import deps
+from app.database import get_db
 from app.agent.schemas import AgentAnalyzeRequest, AgentAnalyzeResponse
 from app.agent.recovery_agent import analyze_recovery_case
 from app.models.payment import Payment
@@ -11,7 +11,7 @@ router = APIRouter()
 @router.post("/analyze", response_model=AgentAnalyzeResponse)
 def analyze_case(
     request: AgentAnalyzeRequest,
-    db: Session = Depends(deps.get_db)
+    db: Session = Depends(get_db)
 ):
     try:
         response = analyze_recovery_case(db, request.payment_id, request.recovery_case_id)

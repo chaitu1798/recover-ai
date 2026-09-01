@@ -53,6 +53,7 @@ def analyze_recovery_case(db: Session, payment_id: UUID, recovery_case_id: UUID)
     if existing_decision:
         reasoning_data = existing_decision.reasoning or {}
         return AgentAnalyzeResponse(
+            decision_id=existing_decision.id,
             recovery_case_id=recovery_case.id,
             failure_category=reasoning_data.get("failure_category", "UNKNOWN"),
             recovery_probability=float(reasoning_data.get("recovery_probability", 0.0)),
@@ -143,9 +144,11 @@ def analyze_recovery_case(db: Session, payment_id: UUID, recovery_case_id: UUID)
         reasoning=final_decision["reasoning"]
     )
     
+    db.flush() # Ensure decision has an ID
     db.commit()
     
     return AgentAnalyzeResponse(
+        decision_id=decision.id,
         recovery_case_id=recovery_case.id,
         failure_category=failure_category,
         recovery_probability=recovery_probability,

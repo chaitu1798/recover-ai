@@ -12,6 +12,7 @@ class AgentAnalyzeRequest(BaseModel):
     recovery_case_id: UUID
 
 class AgentAnalyzeResponse(BaseModel):
+    decision_id: UUID
     recovery_case_id: UUID
     failure_category: str
     recovery_probability: float

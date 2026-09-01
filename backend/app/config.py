@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
     RAZORPAY_WEBHOOK_SECRET: str = ""
+    RAZORPAY_MODE: str = "test"
 
     LLM_API_KEY: str = ""
 
