@@ -4,11 +4,42 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+interface CaseData {
+  payment: {
+    id: string;
+    amount: number;
+    currency: string;
+    error_code: string;
+    method: string | null;
+  };
+  case: {
+    id: string;
+    status: string;
+    approval_status: string | null;
+    recovery_probability: number | null;
+    approved_by: string | null;
+    opened_at: string;
+    rejected_by: string | null;
+    rejection_reason: string | null;
+  };
+  decision: {
+    recommended_action: string | null;
+    diagnosis: string;
+    reasoning: any;
+  };
+  audit_logs: Array<{
+    action: string;
+    actor: string;
+    reason: string | null;
+    timestamp: string;
+  }>;
+}
+
 export default function CaseDetails() {
   const params = useParams();
   const caseId = params.id as string;
 
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<CaseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -21,14 +52,19 @@ export default function CaseDetails() {
       if (!res.ok) throw new Error("Failed to fetch case details");
       const result = await res.json();
       setData(result);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An error occurred");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
     fetchData();
   }, [caseId]);
 
@@ -45,8 +81,10 @@ export default function CaseDetails() {
         throw new Error(d.detail || "Approval failed");
       }
       await fetchData();
-    } catch (err: any) {
-      alert("Error: " + err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert("Error: " + err.message);
+      }
     } finally {
       setActionLoading(false);
     }
@@ -65,8 +103,10 @@ export default function CaseDetails() {
         throw new Error(d.detail || "Rejection failed");
       }
       await fetchData();
-    } catch (err: any) {
-      alert("Error: " + err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert("Error: " + err.message);
+      }
     } finally {
       setActionLoading(false);
     }
@@ -142,7 +182,7 @@ export default function CaseDetails() {
               <div className="sm:col-span-1">
                 <dt className="text-sm font-medium text-gray-500">Recovery Prob.</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {data.case.recovery_probability !== undefined ? (data.case.recovery_probability * 100).toFixed(1) + '%' : 'N/A'}
+                  {data.case.recovery_probability !== null && data.case.recovery_probability !== undefined ? (data.case.recovery_probability * 100).toFixed(1) + '%' : 'N/A'}
                 </dd>
               </div>
               <div className="sm:col-span-2">
@@ -211,7 +251,7 @@ export default function CaseDetails() {
         <div className="px-6 py-5 border-t border-gray-200">
           <h4 className="text-md font-semibold text-gray-900 mb-4">Audit Timeline</h4>
           <ul className="space-y-4">
-            {data.audit_logs.map((log: any, idx: number) => (
+            {data.audit_logs.map((log, idx: number) => (
               <li key={idx} className="bg-gray-50 p-3 rounded border border-gray-100 flex flex-col sm:flex-row sm:justify-between sm:items-center">
                 <div>
                   <p className="text-sm font-medium text-gray-900">{log.action.replace(/_/g, ' ')}</p>

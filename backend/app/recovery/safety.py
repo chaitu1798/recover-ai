@@ -12,4 +12,7 @@ def assert_test_mode():
     mode = getattr(settings, "RAZORPAY_MODE", None)
     if mode != "test":
         raise UnsafeExecutionModeError(f"Execution is hard-blocked. RAZORPAY_MODE must be 'test', got '{mode}'")
-
+        
+    key = getattr(settings, "RAZORPAY_KEY_ID", "")
+    if key.startswith("rzp_live_"):
+        raise UnsafeExecutionModeError("Execution is hard-blocked. Live Razorpay key detected.")

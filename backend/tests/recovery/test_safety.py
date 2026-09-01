@@ -22,6 +22,14 @@ def test_missing_mode_blocked(monkeypatch):
         assert_test_mode()
 
 def test_invalid_mode_blocked(monkeypatch):
-    monkeypatch.setattr(settings, "RAZORPAY_MODE", "invalid")
-    with pytest.raises(UnsafeExecutionModeError):
+    from app.config import settings
+    monkeypatch.setattr(settings, "RAZORPAY_MODE", "invalid_mode")
+    with pytest.raises(UnsafeExecutionModeError, match="must be 'test'"):
+        assert_test_mode()
+
+def test_live_key_blocked(monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "RAZORPAY_MODE", "test")
+    monkeypatch.setattr(settings, "RAZORPAY_KEY_ID", "rzp_live_abc123")
+    with pytest.raises(UnsafeExecutionModeError, match="Live Razorpay key detected"):
         assert_test_mode()

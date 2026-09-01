@@ -20,33 +20,45 @@ def predict_recovery(payment_features: Dict[str, Any]) -> Dict[str, Any]:
     """
     Predicts the probability of recovery for a given payment.
     """
-    model = load_model()
-    metadata = get_active_model()
-    threshold = metadata.get("threshold", 0.5)
-    
-    # Convert input to DataFrame
-    df = pd.DataFrame([payment_features])
-    
-    # Check for leaky columns
-    leaky_columns = [
-        "expected_recovery_action",
-        "simulated_recovery_outcome",
-        "simulated_recovered_amount",
-        "recoverable_ground_truth"
-    ]
-    if any(col in df.columns for col in leaky_columns):
-        raise ValueError("Input features contain leaky columns that are not allowed.")
+    try:
+        model = load_model()
+        metadata = get_active_model()
+        threshold = metadata.get("threshold", 0.5)
         
-    # Get probability of class 1 (recoverable)
-    prob = float(model.predict_proba(df)[0][1])
-    
-    # Make decision based on threshold
-    predicted_recoverable = bool(prob >= threshold)
-    
-    return {
-        "recovery_probability": round(prob, 4),
-        "predicted_recoverable": predicted_recoverable,
-        "model_name": metadata.get("model_name", "unknown"),
-        "model_version": metadata.get("model_version", "unknown"),
-        "threshold": threshold
-    }
+        # Convert input to DataFrame
+        df = pd.DataFrame([payment_features])
+        
+        # Check for leaky columns
+        leaky_columns = [
+            "expected_recovery_action",
+            "simulated_recovery_outcome",
+            "simulated_recovered_amount",
+            "recoverable_ground_truth"
+        ]
+        if any(col in df.columns for col in leaky_columns):
+            raise ValueError("Input features contain leaky columns that are not allowed.")
+            
+        # Get probability of class 1 (recoverable)
+        prob = float(model.predict_proba(df)[0][1])
+        
+        # Make decision based on threshold
+        predicted_recoverable = bool(prob >= threshold)
+        
+        return {
+            "recovery_probability": round(prob, 4),
+            "predicted_recoverable": predicted_recoverable,
+            "model_name": metadata.get("model_name", "unknown"),
+            "model_version": metadata.get("model_version", "unknown"),
+            "threshold": threshold
+        }
+    except ValueError:
+        raise
+    except Exception as e:
+        return {
+            "recovery_probability": 0.0,
+            "predicted_recoverable": False,
+            "model_name": "fallback",
+            "model_version": "fallback",
+            "threshold": 0.5,
+            "fallback_reason": str(e)
+        }

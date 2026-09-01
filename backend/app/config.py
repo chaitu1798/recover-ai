@@ -4,9 +4,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+psycopg2://recoverai:recoverai@postgres:5432/recoverai"
     REDIS_URL: str = "redis://redis:6379/0"
 
-    RAZORPAY_KEY_ID: str = ""
-    RAZORPAY_KEY_SECRET: str = ""
-    RAZORPAY_WEBHOOK_SECRET: str = ""
+    RAZORPAY_KEY_ID: str = "rzp_test_dummy"
+    RAZORPAY_KEY_SECRET: str = "dummy_secret"
+    RAZORPAY_WEBHOOK_SECRET: str = "test_webhook_secret_123"
     RAZORPAY_MODE: str = "test"
 
     LLM_API_KEY: str = ""
