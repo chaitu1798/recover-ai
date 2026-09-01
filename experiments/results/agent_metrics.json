@@ -1,0 +1,16 @@
+{
+    "total_records": 500,
+    "diagnosis_accuracy": 0.762,
+    "policy_compliance": 1.0,
+    "recommendation_distribution": {
+        "RETRY": 0,
+        "PAYMENT_LINK": 0,
+        "REMINDER": 0,
+        "NO_ACTION": 500
+    },
+    "no_action_rate": 1.0,
+    "expected_action_agreement": 1.0,
+    "average_recovery_probability": 0.800000000000007,
+    "invalid_decision_rate": 0.0,
+    "fallback_rate": 1.0
+}

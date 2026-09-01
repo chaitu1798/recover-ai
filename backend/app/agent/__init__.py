@@ -1,0 +1,3 @@
+# Agent Module
+AGENT_VERSION = "1.0.0"
+POLICY_VERSION = "1.0.0"
