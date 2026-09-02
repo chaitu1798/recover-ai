@@ -240,12 +240,12 @@ export default function Home() {
                       {c.recovery_probability !== null ? (c.recovery_probability * 100).toFixed(1) + '%' : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${c.approval_status === 'APPROVED' ? 'bg-green-100 text-green-800' : 
-                          c.approval_status === 'REJECTED' ? 'bg-red-100 text-red-800' : 
-                          c.approval_status === 'PENDING_APPROVAL' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-gray-100 text-gray-800'}`}>
-                        {c.approval_status || 'NONE'}
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        c.approval_status?.toUpperCase() === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                        c.approval_status?.toUpperCase() === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                        c.approval_status?.toUpperCase() === 'PENDING_APPROVAL' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'}`}>
+                        {c.approval_status ? c.approval_status.replace(/_/g, ' ').toUpperCase() : 'NOT REQUIRED'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

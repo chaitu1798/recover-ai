@@ -18,6 +18,7 @@ interface CaseData {
     approval_status: string | null;
     recovery_probability: number | null;
     priority_level: string | null;
+    priority_score: number | null;
     expected_recovery_value: number | null;
     approved_by: string | null;
     opened_at: string;
@@ -25,9 +26,17 @@ interface CaseData {
     rejection_reason: string | null;
   };
   decision: {
+    id: string | null;
     recommended_action: string | null;
+    confidence: number | null;
     diagnosis: string;
     reasoning: string | Record<string, unknown> | null;
+    strategy: string | null;
+    policy_checks: Record<string, unknown> | null;
+  };
+  action: {
+    action_type: string | null;
+    status: string | null;
   };
   audit_logs: Array<{
     action: string;
@@ -115,7 +124,37 @@ export default function CaseDetails() {
     }
   };
 
-  const formatCurrency = (minorUnits: number, currency: string) => {
+  const handleExecute = async () => {
+    if (!data?.decision?.id) {
+      alert("No decision available for execution.");
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const res = await fetch("http://localhost:8000/api/v1/recovery/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recovery_case_id: caseId,
+          decision_id: data.decision.id,
+          idempotency_key: `exec_${caseId}_${Date.now()}`
+        })
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.detail || (d.error && d.error.message) || "Execution failed");
+      }
+      await fetchData();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert("Execution Error: " + err.message);
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const formatCurrency = (minorUnits: number | null | undefined, currency: string) => {
     if (minorUnits === undefined || minorUnits === null) return 'N/A';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -126,6 +165,11 @@ export default function CaseDetails() {
   if (loading) return <div className="p-12 text-center text-gray-500">Loading details...</div>;
   if (error) return <div className="p-12 text-center text-red-500">Error: {error}</div>;
   if (!data) return null;
+
+  const normalizedApprovalStatus = data.case.approval_status ? data.case.approval_status.toUpperCase() : 'NOT_REQUIRED';
+  const isPendingApproval = normalizedApprovalStatus === 'PENDING_APPROVAL';
+  const isApproved = normalizedApprovalStatus === 'APPROVED';
+  const isRejected = normalizedApprovalStatus === 'REJECTED';
 
   return (
     <main className="flex min-h-screen flex-col items-center p-8 bg-gray-50">
@@ -146,6 +190,8 @@ export default function CaseDetails() {
                         ${data.case.status === 'recovered' ? 'bg-green-100 text-green-800' : 
                           data.case.status === 'failed' ? 'bg-red-100 text-red-800' : 
                           data.case.status === 'executing' ? 'bg-blue-100 text-blue-800' : 
+                          data.case.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
+                          data.case.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-gray-100 text-gray-800'}`}>
               Status: {data.case.status.toUpperCase()}
             </span>
@@ -185,22 +231,26 @@ export default function CaseDetails() {
               <div className="sm:col-span-1">
                 <dt className="text-sm font-medium text-gray-500">Recovery Prob.</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {data.case.recovery_probability !== null && data.case.recovery_probability !== undefined ? (data.case.recovery_probability * 100).toFixed(1) + '%' : 'N/A'}
+                  {data.case.recovery_probability !== null && data.case.recovery_probability !== undefined
+                    ? (data.case.recovery_probability * 100).toFixed(1) + '%'
+                    : 'N/A'}
                 </dd>
               </div>
               <div className="sm:col-span-1">
                 <dt className="text-sm font-medium text-gray-500">Expected Value</dt>
                 <dd className="mt-1 text-sm text-gray-900 font-semibold text-green-600">
-                  {data.case.expected_recovery_value ? formatCurrency(data.case.expected_recovery_value, data.payment.currency) : 'N/A'}
+                  {data.case.expected_recovery_value !== null && data.case.expected_recovery_value !== undefined
+                    ? formatCurrency(data.case.expected_recovery_value, data.payment.currency)
+                    : 'N/A'}
                 </dd>
               </div>
               <div className="sm:col-span-1">
                 <dt className="text-sm font-medium text-gray-500">Priority Level</dt>
                 <dd className="mt-1 text-sm text-gray-900">
                   <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    data.case.priority_level === 'HIGH' ? 'bg-red-100 text-red-800' :
-                    data.case.priority_level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
-                    data.case.priority_level === 'LOW' ? 'bg-green-100 text-green-800' :
+                    data.case.priority_level?.toUpperCase() === 'HIGH' ? 'bg-red-100 text-red-800' :
+                    data.case.priority_level?.toUpperCase() === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                    data.case.priority_level?.toUpperCase() === 'LOW' ? 'bg-green-100 text-green-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
                     {data.case.priority_level || 'N/A'}
@@ -214,7 +264,9 @@ export default function CaseDetails() {
               {data.decision.reasoning && (
                 <div className="sm:col-span-2">
                   <dt className="text-sm font-medium text-gray-500">Reasoning</dt>
-                  <dd className="mt-1 text-sm text-gray-700 bg-gray-50 p-2 rounded text-xs">{typeof data.decision.reasoning === 'string' ? data.decision.reasoning : JSON.stringify(data.decision.reasoning, null, 2)}</dd>
+                  <dd className="mt-1 text-sm text-gray-700 bg-gray-50 p-2 rounded text-xs font-mono overflow-x-auto">
+                    {typeof data.decision.reasoning === 'string' ? data.decision.reasoning : JSON.stringify(data.decision.reasoning, null, 2)}
+                  </dd>
                 </div>
               )}
             </dl>
@@ -225,18 +277,18 @@ export default function CaseDetails() {
         <div className="px-6 py-5 bg-gray-50 border-t border-gray-200">
           <h4 className="text-md font-semibold text-gray-900 mb-3">Human Approval Layer</h4>
           
-          <div className="mb-4">
-            <span className="text-sm font-medium text-gray-500 mr-2">Approval Status:</span>
-            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${data.case.approval_status === 'APPROVED' ? 'bg-green-100 text-green-800' : 
-                          data.case.approval_status === 'REJECTED' ? 'bg-red-100 text-red-800' : 
-                          data.case.approval_status === 'PENDING_APPROVAL' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-gray-100 text-gray-800'}`}>
-              {data.case.approval_status || 'NOT REQUIRED'}
+          <div className="mb-4 flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-500">Approval Status:</span>
+            <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+              isApproved ? 'bg-green-100 text-green-800' :
+              isRejected ? 'bg-red-100 text-red-800' :
+              isPendingApproval ? 'bg-yellow-100 text-yellow-800' :
+              'bg-gray-100 text-gray-800'}`}>
+              {normalizedApprovalStatus.replace(/_/g, ' ')}
             </span>
           </div>
 
-          {data.case.approval_status === 'PENDING_APPROVAL' && (
+          {isPendingApproval && (
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center p-4 bg-white rounded border border-gray-200">
               <input 
                 type="text" 
@@ -248,24 +300,41 @@ export default function CaseDetails() {
               <button 
                 onClick={handleApprove} 
                 disabled={actionLoading}
-                className="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                className="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
               >
                 Approve Recovery
               </button>
               <button 
                 onClick={handleReject} 
                 disabled={actionLoading}
-                className="bg-red-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                className="bg-red-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
                 Reject Recovery
               </button>
             </div>
           )}
-          {data.case.approval_status === 'APPROVED' && (
-            <p className="text-sm text-gray-700">Approved by <span className="font-medium">{data.case.approved_by}</span> on {new Date(data.case.opened_at).toLocaleString()}</p>
+          {isApproved && (
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-emerald-50 rounded border border-emerald-200">
+              <div>
+                <p className="text-sm text-emerald-900 font-medium">Approval Granted</p>
+                <p className="text-xs text-emerald-700 mt-0.5">Approved by <span className="font-semibold">{data.case.approved_by || 'operator'}</span> on {new Date(data.case.opened_at).toLocaleString()}</p>
+              </div>
+              {data.case.status.toLowerCase() === 'approved' && (
+                <button
+                  onClick={handleExecute}
+                  disabled={actionLoading}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                >
+                  {actionLoading ? "Executing..." : "Execute Recovery (Simulator)"}
+                </button>
+              )}
+            </div>
           )}
-          {data.case.approval_status === 'REJECTED' && (
-            <p className="text-sm text-gray-700">Rejected by <span className="font-medium">{data.case.rejected_by}</span>: {data.case.rejection_reason}</p>
+          {isRejected && (
+            <div className="p-4 bg-red-50 rounded border border-red-200">
+              <p className="text-sm text-red-900 font-medium">Approval Rejected</p>
+              <p className="text-xs text-red-700 mt-0.5">Rejected by <span className="font-semibold">{data.case.rejected_by || 'operator'}</span>: {data.case.rejection_reason || 'No reason specified'}</p>
+            </div>
           )}
         </div>
 
