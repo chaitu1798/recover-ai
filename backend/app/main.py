@@ -7,6 +7,7 @@ from app.middleware import RequestCorrelationMiddleware
 from app.logging import request_id_ctx_var
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 
 # Setup structured logging
@@ -36,6 +37,20 @@ async def validation_exception_handler(request, exc):
             "error": {
                 "code": "VALIDATION_ERROR",
                 "message": str(exc),
+                "request_id": request_id
+            }
+        }
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request, exc):
+    request_id = request_id_ctx_var.get()
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": "HTTP_ERROR",
+                "message": exc.detail,
                 "request_id": request_id
             }
         }

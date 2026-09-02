@@ -29,7 +29,7 @@ def generate_signature(payload: str, secret: str) -> str:
 def test_missing_signature(client):
     response = client.post("/api/v1/webhooks/razorpay", json={"test": "data"})
     assert response.status_code == 400
-    assert response.json() == {"detail": "Missing signature"}
+    assert response.json()["error"]["message"] == "Missing signature"
 
 def test_invalid_signature(client):
     response = client.post(
@@ -38,7 +38,7 @@ def test_invalid_signature(client):
         headers={"X-Razorpay-Signature": "invalid_sig"}
     )
     assert response.status_code == 400
-    assert response.json() == {"detail": "Invalid signature"}
+    assert response.json()["error"]["message"] == "Invalid signature"
 
 def test_malformed_json(client):
     secret = settings.RAZORPAY_WEBHOOK_SECRET = "test_secret"
@@ -50,7 +50,7 @@ def test_malformed_json(client):
         headers={"X-Razorpay-Signature": signature}
     )
     assert response.status_code == 400
-    assert response.json() == {"detail": "Malformed JSON"}
+    assert response.json()["error"]["message"] == "Malformed JSON"
 
 def test_missing_event_id(db: Session, client):
     secret = settings.RAZORPAY_WEBHOOK_SECRET = "test_secret"
@@ -62,7 +62,7 @@ def test_missing_event_id(db: Session, client):
         headers={"X-Razorpay-Signature": signature}
     )
     assert response.status_code == 400
-    assert response.json() == {"detail": "Missing event ID or type"}
+    assert response.json()["error"]["message"] == "Missing event ID or type"
 
 def test_unsupported_event(db: Session, client):
     secret = settings.RAZORPAY_WEBHOOK_SECRET = "test_secret"
