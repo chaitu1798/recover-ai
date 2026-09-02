@@ -12,4 +12,5 @@ from .policy import Policy
 from .audit_log import AuditLog
 from .experiment import Experiment
 from .experiment_result import ExperimentResult
+from .experiment_assignment import ExperimentAssignment
 from .notification import Notification

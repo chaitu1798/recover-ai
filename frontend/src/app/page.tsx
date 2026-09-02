@@ -22,6 +22,18 @@ interface Metrics {
   execution_success_rate: number;
 }
 
+interface ExpectedVsActual {
+  expected_recovery_value: number;
+  actual_recovered_value: number;
+  difference: number;
+  ratio: number;
+}
+
+interface StrategyAnalytics {
+  strategy: string;
+  count: number;
+}
+
 interface Case {
   id: string;
   payment_id: string;
@@ -36,6 +48,8 @@ interface Case {
 
 export default function Home() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [expectedVsActual, setExpectedVsActual] = useState<ExpectedVsActual | null>(null);
+  const [strategyStats, setStrategyStats] = useState<StrategyAnalytics[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +63,16 @@ export default function Home() {
       if (!metricsRes.ok) throw new Error("Failed to fetch metrics");
       const metricsData = await metricsRes.json();
       setMetrics(metricsData);
+
+      const evsRes = await fetch("http://localhost:8000/api/v1/dashboard/expected-vs-actual");
+      if (evsRes.ok) {
+        setExpectedVsActual(await evsRes.json());
+      }
+
+      const stratRes = await fetch("http://localhost:8000/api/v1/dashboard/strategy-analytics");
+      if (stratRes.ok) {
+        setStrategyStats(await stratRes.json());
+      }
 
       const casesRes = await fetch("http://localhost:8000/api/v1/recovery/cases");
       if (!casesRes.ok) throw new Error("Failed to fetch cases");
@@ -117,6 +141,54 @@ export default function Home() {
           <p className="text-3xl font-bold text-gray-900 mt-2">
             {metrics?.total_cases || 0}
           </p>
+        </div>
+      </div>
+
+      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Strategy Distribution</h3>
+          {strategyStats.length === 0 ? (
+            <p className="text-gray-500">No strategy data.</p>
+          ) : (
+            <ul className="divide-y divide-gray-200">
+              {strategyStats.map((s, idx) => (
+                <li key={idx} className="py-2 flex justify-between">
+                  <span className="text-gray-700 font-medium">{s.strategy}</span>
+                  <span className="text-gray-900">{s.count} cases</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Expected vs Actual Recovery</h3>
+          {expectedVsActual ? (
+            <dl className="grid grid-cols-2 gap-4">
+              <div>
+                <dt className="text-sm text-gray-500">Expected Value</dt>
+                <dd className="text-xl font-semibold text-gray-900">{formatCurrency(expectedVsActual.expected_recovery_value, 'INR')}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-gray-500">Actual Value</dt>
+                <dd className="text-xl font-semibold text-green-600">{formatCurrency(expectedVsActual.actual_recovered_value, 'INR')}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-gray-500">Difference</dt>
+                <dd className={`text-lg font-semibold ${expectedVsActual.difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {expectedVsActual.difference >= 0 ? '+' : ''}{formatCurrency(expectedVsActual.difference, 'INR')}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm text-gray-500">Ratio</dt>
+                <dd className="text-lg font-semibold text-gray-900">
+                  {(expectedVsActual.ratio * 100).toFixed(1)}%
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-gray-500">Data unavailable.</p>
+          )}
         </div>
       </div>
 

@@ -18,6 +18,12 @@ from app.recovery.state_machine import transition_to_analyzed, transition_to_pen
 from app.agent.schemas import AgentAnalyzeResponse
 from app.ml.features import build_preprocessor
 from app.ml.predict import predict_recovery
+from app.recovery.prioritization import calculate_priority
+from app.recovery.strategy import select_strategy
+from app.recovery.experimentation import assign_experiment_variant
+from app.models.experiment import Experiment
+from app.models.experiment_assignment import ExperimentAssignment
+from datetime import datetime, timezone
 
 provider = OpenAIProvider()
 
@@ -61,7 +67,7 @@ def analyze_recovery_case(db: Session, payment_id: UUID, recovery_case_id: UUID)
             recommended_action=existing_decision.recommended_action,
             agent_confidence=float(existing_decision.confidence),
             policy_allowed=reasoning_data.get("policy_allowed", False),
-            reasoning=reasoning_data.get("reasoning", str(existing_decision.reasoning)),
+            reasoning=str(reasoning_data.get("reasoning", existing_decision.reasoning)),
             decision_source=reasoning_data.get("decision_source", "UNKNOWN"),
             agent_version=reasoning_data.get("agent_version", AGENT_VERSION),
             model_version=existing_decision.model_version,
@@ -79,7 +85,49 @@ def analyze_recovery_case(db: Session, payment_id: UUID, recovery_case_id: UUID)
     # 2. Diagnose
     failure_category = diagnose_failure(payment.error_code or "OTHER")
     
-    # 3. Ask LLM (optional)
+    # 3. Strategy Optimizer (replaces/augments LLM)
+    strat_action, strat_conf, strat_reasons, strat_exp = select_strategy(
+        recovery_probability=recovery_probability,
+        failure_reason=failure_category,
+        attempt_number=payment.attempt_number,
+        customer_history_success_rate=0.5 # placeholder
+    )
+    
+    # 3.5 Check for active experiments
+    now = datetime.now(timezone.utc)
+    active_experiment = db.query(Experiment).filter(
+        Experiment.start_date <= now,
+        (Experiment.end_date == None) | (Experiment.end_date >= now)
+    ).first()
+    
+    assigned_variant = None
+    experiment_id = None
+    if active_experiment:
+        experiment_id = active_experiment.id
+        variants = ["CONTROL", "VARIANT"]
+        assigned_variant = assign_experiment_variant(recovery_case.id, active_experiment.id, variants)
+        
+        # Determine overridden action based on experiment variant
+        if assigned_variant == "VARIANT" and active_experiment.strategy != strat_action:
+            strat_action = active_experiment.strategy
+            strat_reasons.append("EXPERIMENT_VARIANT_OVERRIDE")
+            strat_exp = f"Overridden by experiment {active_experiment.name} variant."
+        
+        # Save assignment
+        assignment = db.query(ExperimentAssignment).filter(
+            ExperimentAssignment.experiment_id == active_experiment.id,
+            ExperimentAssignment.recovery_case_id == recovery_case.id
+        ).first()
+        if not assignment:
+            assignment = ExperimentAssignment(
+                experiment_id=active_experiment.id,
+                recovery_case_id=recovery_case.id,
+                assigned_strategy=strat_action,
+                variant=assigned_variant
+            )
+            db.add(assignment)
+    
+    # Optional LLM can still run, but strategy takes precedence for deterministic reasoning
     prompt = build_prompt(
         payment_amount=float(payment.amount),
         currency=payment.currency,
@@ -92,29 +140,39 @@ def analyze_recovery_case(db: Session, payment_id: UUID, recovery_case_id: UUID)
     llm_recommendation = provider.get_recommendation(prompt)
     
     # 4. Evaluate Policy
-    temp_action = llm_recommendation.recommended_action if llm_recommendation else "NO_ACTION"
-    policy_result = evaluate_policy(policy, payment, recovery_case, recovery_probability, temp_action)
+    policy_result = evaluate_policy(policy, payment, recovery_case, recovery_probability, strat_action)
     
-    # 5. Final Decision
-    final_decision = make_decision(
-        payment,
-        failure_category,
-        recovery_probability,
-        policy,
-        policy_result,
-        llm_recommendation
+    # 5. Calculate Priority
+    priority_score, priority_level, priority_exp = calculate_priority(
+        recovery_probability=recovery_probability,
+        amount_at_risk=payment.amount,
+        attempt_number=payment.attempt_number
     )
     
-    # 6. Save Decision
+    expected_value_minor = int(payment.amount * recovery_probability)
+    recovery_case.priority_level = priority_level
+    recovery_case.expected_recovery_value = expected_value_minor
+    recovery_case.recovery_probability = recovery_probability
+    db.add(recovery_case)
+    
+    # 6. Final Decision
+    final_action = strat_action if policy_result["allowed"] else "NO_ACTION"
+    final_confidence = strat_conf
+    final_reasoning = {"strategy_explanation": strat_exp, "priority_explanation": priority_exp}
+    
+    # 7. Save Decision
     reasoning_data = {
-        "reasoning": final_decision["reasoning"],
+        "reasoning": final_reasoning,
         "agent_version": AGENT_VERSION,
         "policy_version": POLICY_VERSION,
         "failure_category": failure_category,
         "recovery_probability": float(recovery_probability),
-        "policy_allowed": final_decision["policy_allowed"],
-        "decision_source": final_decision["decision_source"],
-        "expected_recovery_value_minor": final_decision["expected_recovery_value_minor"]
+        "policy_allowed": policy_result["allowed"],
+        "decision_source": "STRATEGY_OPTIMIZER",
+        "expected_recovery_value_minor": expected_value_minor,
+        "priority_level": priority_level,
+        "experiment_id": str(experiment_id) if experiment_id else None,
+        "experiment_variant": assigned_variant
     }
     
     decision = RecoveryDecision(
@@ -122,13 +180,16 @@ def analyze_recovery_case(db: Session, payment_id: UUID, recovery_case_id: UUID)
         model_name=ml_result["model_name"],
         model_version=model_version,
         diagnosis=failure_category,
-        recommended_action=final_decision["recommended_action"],
-        confidence=final_decision["confidence"],
+        recommended_action=final_action,
+        confidence=final_confidence,
+        priority_score=priority_score,
+        policy_checks=policy_result["checks"],
+        reason_codes=strat_reasons,
         reasoning=reasoning_data
     )
     db.add(decision)
     
-    # 7. Create Audit Log
+    # 8. Create Audit Log
     create_audit_log(
         db=db,
         payment=payment,
@@ -138,16 +199,16 @@ def analyze_recovery_case(db: Session, payment_id: UUID, recovery_case_id: UUID)
         policy_version=POLICY_VERSION,
         recovery_probability=recovery_probability,
         failure_category=failure_category,
-        recommended_action=final_decision["recommended_action"],
-        confidence=final_decision["confidence"],
+        recommended_action=final_action,
+        confidence=final_confidence,
         policy_result=policy_result,
-        decision_source=final_decision["decision_source"],
-        reasoning=final_decision["reasoning"]
+        decision_source="STRATEGY_OPTIMIZER",
+        reasoning=str(final_reasoning)
     )
     
     db.flush() # Ensure decision has an ID
     
-    if final_decision["recommended_action"] != "NO_ACTION" and final_decision["policy_allowed"]:
+    if final_action != "NO_ACTION" and policy_result["allowed"]:
         transition_to_pending_approval(db, recovery_case, str(decision.id))
     else:
         transition_to_analyzed(db, recovery_case, str(decision.id))
@@ -159,11 +220,11 @@ def analyze_recovery_case(db: Session, payment_id: UUID, recovery_case_id: UUID)
         recovery_case_id=recovery_case.id,
         failure_category=failure_category,
         recovery_probability=recovery_probability,
-        recommended_action=final_decision["recommended_action"],
-        agent_confidence=final_decision["confidence"],
-        policy_allowed=final_decision["policy_allowed"],
-        reasoning=final_decision["reasoning"],
-        decision_source=final_decision["decision_source"],
+        recommended_action=final_action,
+        agent_confidence=final_confidence,
+        policy_allowed=policy_result["allowed"],
+        reasoning=str(final_reasoning),
+        decision_source="STRATEGY_OPTIMIZER",
         agent_version=AGENT_VERSION,
         model_version=model_version,
         policy_version=POLICY_VERSION

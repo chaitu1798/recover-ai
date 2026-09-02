@@ -14,7 +14,10 @@ class RecoveryDecision(Base):
     model_version = Column(String(50))
     diagnosis = Column(Text)
     recommended_action = Column(String(50), nullable=False)
-    confidence = Column(Numeric(6,5))
+    confidence = Column(Numeric(5,4), nullable=False)
+    priority_score = Column(Numeric(20,5))
+    policy_checks = Column(JSONB)
+    reason_codes = Column(JSONB)
     reasoning = Column(JSONB)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     

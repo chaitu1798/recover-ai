@@ -14,7 +14,7 @@ from app.agent.schemas import LLMRecommendation
 def test_agent_analyze_case(mock_get_recommendation, mock_predict_recovery):
     db_mock = MagicMock()
 
-    payment = Payment(id=uuid.uuid4(), merchant_id=uuid.uuid4(), amount=1000, attempt_number=1, error_code="BANK_TIMEOUT", currency="INR", method="card")
+    payment = Payment(id=uuid.uuid4(), merchant_id=uuid.uuid4(), amount=5000, attempt_number=1, error_code="BANK_TIMEOUT", currency="INR", method="card")
     recovery_case = RecoveryCase(id=uuid.uuid4(), payment_id=payment.id, eligible=True, status="open")
     policy = Policy(merchant_id=payment.merchant_id, min_confidence=0.5, max_attempts=3, enabled=True)
 
@@ -29,6 +29,10 @@ def test_agent_analyze_case(mock_get_recommendation, mock_predict_recovery):
             query_mock.filter.return_value.order_by.return_value.first.return_value = None
         elif model == Policy:
             query_mock.filter.return_value.first.return_value = policy
+        else:
+            # For Experiment and ExperimentAssignment, return None so they are not active
+            query_mock.filter.return_value.first.return_value = None
+            query_mock.filter.return_value.all.return_value = []
         return query_mock
 
     db_mock.query.side_effect = side_effect
@@ -42,10 +46,11 @@ def test_agent_analyze_case(mock_get_recommendation, mock_predict_recovery):
 
     response = analyze_recovery_case(db_mock, payment.id, recovery_case.id)
 
-    assert response.recommended_action == "RETRY"
+    assert response.recommended_action == "RETRY" # Strategy Optimizer says RETRY for high prob temporary failure (like BANK_TIMEOUT, wait, it says network errors)
+    # Actually wait, BANK_TIMEOUT is diagnosed as TEMPORARY_FAILURE
     assert response.policy_allowed is True
-    assert response.decision_source == "LLM"
-    assert db_mock.add.call_count == 3 # decision, audit log from create_audit_log, audit log from transition
+    assert response.decision_source == "STRATEGY_OPTIMIZER"
+    assert db_mock.add.call_count == 4 # case (priority update), decision, audit log from create_audit_log, audit log from transition
 
 @patch('app.agent.recovery_agent.predict_recovery')
 def test_agent_idempotency(mock_predict_recovery):
@@ -71,6 +76,9 @@ def test_agent_idempotency(mock_predict_recovery):
             query_mock.filter.return_value.first.return_value = recovery_case
         elif model == RecoveryDecision:
             query_mock.filter.return_value.order_by.return_value.first.return_value = existing_decision
+        else:
+            query_mock.filter.return_value.first.return_value = None
+            query_mock.filter.return_value.all.return_value = []
         return query_mock
 
     db_mock.query.side_effect = side_effect

@@ -17,6 +17,8 @@ interface CaseData {
     status: string;
     approval_status: string | null;
     recovery_probability: number | null;
+    priority_level: string | null;
+    expected_recovery_value: number | null;
     approved_by: string | null;
     opened_at: string;
     rejected_by: string | null;
@@ -25,7 +27,7 @@ interface CaseData {
   decision: {
     recommended_action: string | null;
     diagnosis: string;
-    reasoning: any;
+    reasoning: string | Record<string, unknown> | null;
   };
   audit_logs: Array<{
     action: string;
@@ -183,6 +185,25 @@ export default function CaseDetails() {
                 <dt className="text-sm font-medium text-gray-500">Recovery Prob.</dt>
                 <dd className="mt-1 text-sm text-gray-900">
                   {data.case.recovery_probability !== null && data.case.recovery_probability !== undefined ? (data.case.recovery_probability * 100).toFixed(1) + '%' : 'N/A'}
+                </dd>
+              </div>
+              <div className="sm:col-span-1">
+                <dt className="text-sm font-medium text-gray-500">Expected Value</dt>
+                <dd className="mt-1 text-sm text-gray-900 font-semibold text-green-600">
+                  {data.case.expected_recovery_value ? formatCurrency(data.case.expected_recovery_value, data.payment.currency) : 'N/A'}
+                </dd>
+              </div>
+              <div className="sm:col-span-1">
+                <dt className="text-sm font-medium text-gray-500">Priority Level</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                    data.case.priority_level === 'HIGH' ? 'bg-red-100 text-red-800' :
+                    data.case.priority_level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                    data.case.priority_level === 'LOW' ? 'bg-green-100 text-green-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {data.case.priority_level || 'N/A'}
+                  </span>
                 </dd>
               </div>
               <div className="sm:col-span-2">
