@@ -110,7 +110,7 @@ def get_case_detail(case_id: UUID, db: Session = Depends(get_db)):
     order = payment.order if payment else None
     decision = db.query(RecoveryDecision).filter(RecoveryDecision.recovery_case_id == case.id).order_by(desc(RecoveryDecision.created_at)).first()
     action = db.query(RecoveryActionModel).filter(RecoveryActionModel.recovery_case_id == case.id).order_by(desc(RecoveryActionModel.created_at)).first()
-    audit_logs = db.query(AuditLog).filter(AuditLog.entity_id == case.id).order_by(desc(AuditLog.timestamp)).all()
+    audit_logs = db.query(AuditLog).filter(AuditLog.entity_id == case.id).order_by(desc(AuditLog.created_at)).all()
     
     return {
         "case": {
@@ -143,7 +143,7 @@ def get_case_detail(case_id: UUID, db: Session = Depends(get_db)):
             {
                 "action": log.action,
                 "actor": log.actor_type,
-                "timestamp": log.timestamp.isoformat(),
+                "timestamp": log.created_at.isoformat() if log.created_at else None,
                 "before_state": log.before_state,
                 "after_state": log.after_state,
                 "reason": log.reason

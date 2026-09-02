@@ -52,11 +52,13 @@ export default function Home() {
   const [strategyStats, setStrategyStats] = useState<StrategyAnalytics[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (isBackground = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) setLoading(true);
+      else setIsRefreshing(true);
       setError(null);
       
       const metricsRes = await fetch("http://localhost:8000/api/v1/dashboard/metrics");
@@ -87,12 +89,17 @@ export default function Home() {
       }
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
+    const interval = setInterval(() => {
+      fetchData(true);
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const formatCurrency = (minorUnits: number, currency: string) => {
@@ -102,18 +109,24 @@ export default function Home() {
     }).format(minorUnits / 100);
   };
 
-  if (loading) return <div className="p-12 text-center text-gray-500">Loading Dashboard...</div>;
-  if (error) return <div className="p-12 text-center text-red-500">Error: {error}</div>;
+  if (loading && !metrics) return <div className="p-12 text-center text-gray-500">Loading Dashboard...</div>;
+  if (error && !metrics) return <div className="p-12 text-center text-red-500">Error: {error}</div>;
 
   return (
     <main className="flex min-h-screen flex-col items-center p-12 bg-gray-50">
       <div className="w-full max-w-6xl mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 tracking-tight">RecoverAI Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">RecoverAI Dashboard</h1>
+            <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live Real-Time
+            </span>
+          </div>
           <h2 className="text-lg text-gray-600 mt-2">Operations & Human Approval Layer</h2>
         </div>
-        <button onClick={fetchData} className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700">
-          Refresh Data
+        <button onClick={() => fetchData(false)} className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700 transition-colors">
+          {isRefreshing ? "Updating..." : "Refresh Data"}
         </button>
       </div>
 

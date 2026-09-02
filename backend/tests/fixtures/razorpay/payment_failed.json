@@ -1,4 +1,5 @@
 {
+  "id": "evt_test_failed_001",
   "entity": "event",
   "account_id": "acc_test_123",
   "event": "payment.failed",
