@@ -2,6 +2,9 @@
 
 RecoverAI is an intelligent payment-recovery decision-support platform designed for the Razorpay AI Buildathon (Track 03). It transforms failed payments into simulated recovered revenue securely and intelligently.
 
+- **Pitch Video**: [Watch 5-Minute Demo & Pitch Video](https://drive.google.com/file/d/1b3uv0LUHjQYhwP5N5jcMKg5NXPL7CXQY/view?usp=sharing)
+- **Repository**: [https://github.com/chaitu1798/recover-ai](https://github.com/chaitu1798/recover-ai)
+
 > **CRITICAL SAFETY MODEL:**
 > - **TEST MODE ONLY**: The system strictly enforces `RAZORPAY_MODE=test` at the execution boundary.
 > - **No Real Financial Transactions**: Live execution fails safely.

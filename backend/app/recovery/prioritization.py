@@ -22,14 +22,15 @@ def calculate_priority(
     if recovery_probability < 0 or recovery_probability > 1:
         recovery_probability = 0.0
         
-    expected_value = amount_at_risk * recovery_probability
+    expected_value_minor = int(amount_at_risk * recovery_probability)
+    expected_value_inr = expected_value_minor / 100.0
     
     # Penalize repeated attempts (e.g., attempt 1 = 1.0, attempt 2 = 0.8, attempt 3 = 0.6)
-    attempt_multiplier = max(0.2, 1.0 - (0.2 * (attempt_number - 1)))
+    attempt_multiplier = round(max(0.2, 1.0 - (0.2 * (attempt_number - 1))), 2)
     
-    priority_score = float(expected_value * attempt_multiplier)
+    priority_score = float(expected_value_minor * attempt_multiplier)
     
-    # Thresholds for priority levels (in minor units, e.g. 100000 = 1000 INR)
+    # Thresholds for priority levels (in minor units, e.g. 50000 = 500 INR)
     if priority_score > 50000 and recovery_probability > 0.5:
         priority_level = "HIGH"
     elif priority_score > 10000:
@@ -37,6 +38,9 @@ def calculate_priority(
     else:
         priority_level = "LOW"
         
-    explanation = f"Calculated based on expected value ({expected_value}) and attempt multiplier ({attempt_multiplier})"
+    explanation = (
+        f"Calculated based on expected value of ₹{expected_value_inr:,.2f} "
+        f"({expected_value_minor} minor units) and attempt multiplier ({attempt_multiplier})"
+    )
     
     return priority_score, priority_level, explanation

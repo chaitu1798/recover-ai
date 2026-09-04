@@ -162,6 +162,50 @@ export default function CaseDetails() {
     }).format(minorUnits / 100);
   };
 
+  const getPlainTextReasoning = (reasoning: unknown): string => {
+    if (!reasoning) return 'No reasoning provided.';
+
+    let obj: unknown = reasoning;
+    if (typeof reasoning === 'string') {
+      try {
+        obj = JSON.parse(reasoning);
+      } catch {
+        const stratMatch = reasoning.match(/['"]strategy_explanation['"]\s*:\s*['"]([^'"]+)['"]/);
+        const prioMatch = reasoning.match(/['"]priority_explanation['"]\s*:\s*['"]([^'"]+)['"]/);
+        const parts: string[] = [];
+        if (stratMatch) parts.push(stratMatch[1]);
+        if (prioMatch) parts.push(prioMatch[1]);
+        if (parts.length > 0) return parts.join(' ');
+        return reasoning;
+      }
+    }
+
+    if (typeof obj === 'object' && obj !== null) {
+      const record = obj as Record<string, unknown>;
+      const inner = (record.reasoning || record) as Record<string, unknown> | string;
+      const parts: string[] = [];
+
+      if (typeof inner === 'string') {
+        parts.push(inner);
+      } else if (typeof inner === 'object' && inner !== null) {
+        if (inner.strategy_explanation) {
+          parts.push(String(inner.strategy_explanation));
+        }
+        if (inner.priority_explanation) {
+          parts.push(String(inner.priority_explanation));
+        }
+      }
+
+      if (parts.length > 0) {
+        return parts.join(' ');
+      }
+
+      if (record.explanation) return String(record.explanation);
+    }
+
+    return String(reasoning);
+  };
+
   if (loading) return <div className="p-12 text-center text-gray-500">Loading details...</div>;
   if (error) return <div className="p-12 text-center text-red-500">Error: {error}</div>;
   if (!data) return null;
@@ -264,8 +308,20 @@ export default function CaseDetails() {
               {data.decision.reasoning && (
                 <div className="sm:col-span-2">
                   <dt className="text-sm font-medium text-gray-500">Reasoning</dt>
-                  <dd className="mt-1 text-sm text-gray-700 bg-gray-50 p-2 rounded text-xs font-mono overflow-x-auto">
-                    {typeof data.decision.reasoning === 'string' ? data.decision.reasoning : JSON.stringify(data.decision.reasoning, null, 2)}
+                  <dd className="mt-1 text-sm text-gray-800 bg-gray-50 p-3 rounded border border-gray-200 leading-relaxed">
+                    <p className="font-medium text-gray-900 mb-1">
+                      {getPlainTextReasoning(data.decision.reasoning)}
+                    </p>
+                    <details className="mt-2 pt-2 border-t border-gray-200">
+                      <summary className="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer font-medium select-none">
+                        View Raw Reasoning JSON
+                      </summary>
+                      <pre className="mt-2 text-xs font-mono text-gray-700 bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                        {typeof data.decision.reasoning === 'string'
+                          ? data.decision.reasoning
+                          : JSON.stringify(data.decision.reasoning, null, 2)}
+                      </pre>
+                    </details>
                   </dd>
                 </div>
               )}

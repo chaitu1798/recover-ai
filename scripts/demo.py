@@ -8,8 +8,14 @@ import time
 import urllib.request
 import urllib.error
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from app.config import settings
+root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+backend_path = os.path.join(root_path, "backend")
+if root_path not in sys.path:
+    sys.path.append(root_path)
+if backend_path not in sys.path:
+    sys.path.append(backend_path)
+
+from app.config import settings  # type: ignore
 
 API_URL = "http://backend:8000/api/v1"
 
@@ -62,29 +68,29 @@ def trigger_webhook(payment_id: str, amount: int, error_code: str):
     except Exception as e:
         print(f"Error: {e}")
 
+from scripts.seed_demo_data import seed_demo_dataset
+
 def run_demo():
-    print("Seeding demo data...")
-    
-    # 1. High amount, BAD_REQUEST_ERROR (should be NO_ACTION or ESCALATE)
-    trigger_webhook(f"pay_{uuid.uuid4().hex[:14]}", 5000000, "BAD_REQUEST_ERROR")
-    time.sleep(1)
-    
-    # 2. Low amount, INSUFFICIENT_FUNDS (should be REMINDER or RETRY)
-    trigger_webhook(f"pay_{uuid.uuid4().hex[:14]}", 150000, "INSUFFICIENT_FUNDS")
-    time.sleep(1)
-    
-    # 3. Medium amount, NETWORK_ERROR (should be RETRY)
-    trigger_webhook(f"pay_{uuid.uuid4().hex[:14]}", 800000, "NETWORK_ERROR")
-    time.sleep(1)
-    
-    # 4. Low amount, TIMEOUT (should be RETRY)
-    trigger_webhook(f"pay_{uuid.uuid4().hex[:14]}", 250000, "TIMEOUT")
-    time.sleep(1)
-    
-    # 5. Very high amount, FRAUD_SUSPECTED (should be NO_ACTION or ESCALATE)
-    trigger_webhook(f"pay_{uuid.uuid4().hex[:14]}", 15000000, "FRAUD_SUSPECTED")
-    
-    print("Demo data seeded. You can now view the dashboard to approve or reject recoveries.")
+    if "--webhook-only" in sys.argv:
+        print("Triggering sample Razorpay webhooks...")
+        trigger_webhook(f"pay_{uuid.uuid4().hex[:14]}", 800000, "NETWORK_ERROR")
+        time.sleep(1)
+        trigger_webhook(f"pay_{uuid.uuid4().hex[:14]}", 150000, "INSUFFICIENT_FUNDS")
+        return
+
+    print("==================================================")
+    print("RECOVERAI BUILDATHON DEMO DATASET GENERATOR")
+    print("==================================================")
+    hero = seed_demo_dataset()
+
+    print("\n==================================================")
+    print("BUILDATHON DEMO HERO CASE")
+    print("==================================================")
+    for k, v in hero.items():
+        print(f"  {k:30}: {v}")
+    print("\nDashboard URL: http://localhost:3000")
+    print(f"Hero Case URL: http://localhost:3000/recovery/{hero['case_id']}")
+    print("==================================================")
 
 if __name__ == "__main__":
     run_demo()
